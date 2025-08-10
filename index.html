@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgentAi – Free Trial</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Fonturi pentru look premium -->
+  <!-- Fonturi -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <style>
-    body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
-    h1{font-family:"Playfair Display",ui-serif,Georgia,serif; letter-spacing:-0.02em;}
+    body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    h1{font-family:"Playfair Display",ui-serif,Georgia,serif;letter-spacing:-0.02em}
   </style>
 </head>
 <body class="bg-black text-white antialiased">
@@ -26,52 +26,63 @@
         Completați formularul de mai jos pentru a testa agentul nostru de email timp de 7 zile gratuit.
       </p>
 
+      <!-- UN SINGUR FORM, cu action catre API -->
       <form id="trial-form" action="/api/trial" method="POST" class="mt-8 space-y-4 max-w-xl mx-auto">
-  <input type="email" name="email" placeholder="Adresă de email" ... required>
-  <input type="text"  name="company" placeholder="Numele companiei" ... required>
-  <button type="submit" class="...">Free Trial</button>
-</form>
-        <input type="email" placeholder="Adresă de email"
-          class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
-                 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
-                 focus:border-transparent transition" required>
-        <input type="text" placeholder="Numele companiei"
-          class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
-                 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
-                 focus:border-transparent transition" required>
+        <input type="email" name="email" autocomplete="email" placeholder="Adresă de email"
+               class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
+                      placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
+                      focus:border-transparent transition" required>
+        <input type="text" name="company" autocomplete="organization" placeholder="Numele companiei"
+               class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
+                      placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
+                      focus:border-transparent transition" required>
         <button type="submit"
-          class="w-full rounded-xl py-3 font-semibold bg-[#FFD633] text-black
-                 hover:bg-[#f2cf4a] transition shadow-lg">
+                class="w-full rounded-xl py-3 font-semibold bg-[#FFD633] text-black
+                       hover:bg-[#f2cf4a] transition shadow-lg">
           Free Trial
         </button>
-      <script>
-const form = document.getElementById('trial-form');
-const btn  = form.querySelector('button');
-form.addEventListener('submit', async (e) => {
-  e.preventDefault(); // try fetch first
-  const email   = form.querySelector('input[name="email"]').value.trim();
-  const company = form.querySelector('input[name="company"]').value.trim();
-  btn.disabled = true; const original = btn.textContent; btn.textContent = 'Se trimite...';
-  try {
-    const res = await fetch('/api/trial', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, company })
-    });
-    if (res.ok) { location.href = '/thanks.html'; return; }
-    // Fallback: submit nativ dacă fetch e blocat
-    form.submit();
-  } catch {
-    form.submit();
-  } finally {
-    btn.disabled = false; btn.textContent = original;
-  }
-});
-</script>
-
       </form>
+
+      <noscript>
+        <p class="mt-4 text-white/70">JavaScript este dezactivat. Formularul va trimite direct și vei fi redirecționat către pagina de confirmare.</p>
+      </noscript>
     </section>
   </main>
+
+  <!-- JS: încearcă fetch; dacă nu reușește, lasă submit nativ -->
+  <script>
+  (function(){
+    const form = document.getElementById('trial-form');
+    if(!form) return;
+    const btn = form.querySelector('button[type="submit"]');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); // progressive enhancement: încercăm fetch
+      const email   = form.elements['email'].value.trim();
+      const company = form.elements['company'].value.trim();
+
+      const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Se trimite...';
+
+      try {
+        const res = await fetch('/api/trial', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email, company })
+        });
+        if (res.ok) {
+          location.href = '/thanks.html';
+        } else {
+          form.submit(); // fallback la submit nativ
+        }
+      } catch {
+        form.submit();   // fallback la submit nativ
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
 
