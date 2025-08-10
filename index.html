@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgentAi – Free Trial</title>
+  <meta name="theme-color" content="#000000">
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Fonturi -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,34 +28,50 @@
         Completați formularul de mai jos pentru a testa agentul nostru de email timp de 7 zile gratuit.
       </p>
 
-      <!-- UN SINGUR FORM, cu action catre API -->
+      <!-- Formular unic, POST către API -->
       <form id="trial-form" action="/api/trial" method="POST" class="mt-8 space-y-4 max-w-xl mx-auto">
-        <input type="email" name="email" autocomplete="email" placeholder="Adresă de email"
-               class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
-                      placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
-                      focus:border-transparent transition" required>
-        <input type="text" name="company" autocomplete="organization" placeholder="Numele companiei"
-               class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
-                      placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
-                      focus:border-transparent transition" required>
-        <button type="submit"
-                class="w-full rounded-xl py-3 font-semibold bg-[#FFD633] text-black
-                       hover:bg-[#f2cf4a] transition shadow-lg">
+        <input
+          type="email"
+          name="email"
+          autocomplete="email"
+          placeholder="Adresă de email"
+          class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
+                 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
+                 focus:border-transparent transition"
+          required
+        >
+        <input
+          type="text"
+          name="company"
+          autocomplete="organization"
+          placeholder="Numele companiei"
+          class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
+                 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
+                 focus:border-transparent transition"
+          required
+        >
+        <button
+          type="submit"
+          class="w-full rounded-xl py-3 font-semibold bg-[#FFD633] text-black
+                 hover:bg-[#f2cf4a] transition shadow-lg"
+        >
           Free Trial
         </button>
       </form>
 
       <noscript>
-        <p class="mt-4 text-white/70">JavaScript este dezactivat. Formularul va trimite direct și vei fi redirecționat către pagina de confirmare.</p>
+        <p class="mt-4 text-white/70">
+          JavaScript este dezactivat. Formularul va trimite direct și vei fi redirecționat către pagina de confirmare.
+        </p>
       </noscript>
     </section>
   </main>
 
   <!-- JS: încearcă fetch; dacă nu reușește, lasă submit nativ -->
   <script>
-  (function(){
+  (function () {
     const form = document.getElementById('trial-form');
-    if(!form) return;
+    if (!form) return;
     const btn = form.querySelector('button[type="submit"]');
 
     form.addEventListener('submit', async (e) => {
@@ -62,12 +80,13 @@
       const company = form.elements['company'].value.trim();
 
       const original = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Se trimite...';
+      btn.disabled = true;
+      btn.textContent = 'Se trimite...';
 
       try {
         const res = await fetch('/api/trial', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, company })
         });
         if (res.ok) {
@@ -75,14 +94,14 @@
         } else {
           form.submit(); // fallback la submit nativ
         }
-      } catch {
+      } catch (err) {
         form.submit();   // fallback la submit nativ
       } finally {
-        btn.disabled = false; btn.textContent = original;
+        btn.disabled = false;
+        btn.textContent = original;
       }
     });
   })();
   </script>
 </body>
 </html>
-
