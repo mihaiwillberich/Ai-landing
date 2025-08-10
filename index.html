@@ -26,7 +26,11 @@
         Completați formularul de mai jos pentru a testa agentul nostru de email timp de 7 zile gratuit.
       </p>
 
-      <form class="mt-8 space-y-4 max-w-xl mx-auto">
+      <form id="trial-form" action="/api/trial" method="POST" class="mt-8 space-y-4 max-w-xl mx-auto">
+  <input type="email" name="email" placeholder="Adresă de email" ... required>
+  <input type="text"  name="company" placeholder="Numele companiei" ... required>
+  <button type="submit" class="...">Free Trial</button>
+</form>
         <input type="email" placeholder="Adresă de email"
           class="w-full rounded-xl px-4 py-3 bg-transparent border border-white/20
                  placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD633]
@@ -40,8 +44,34 @@
                  hover:bg-[#f2cf4a] transition shadow-lg">
           Free Trial
         </button>
+      <script>
+const form = document.getElementById('trial-form');
+const btn  = form.querySelector('button');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault(); // try fetch first
+  const email   = form.querySelector('input[name="email"]').value.trim();
+  const company = form.querySelector('input[name="company"]').value.trim();
+  btn.disabled = true; const original = btn.textContent; btn.textContent = 'Se trimite...';
+  try {
+    const res = await fetch('/api/trial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, company })
+    });
+    if (res.ok) { location.href = '/thanks.html'; return; }
+    // Fallback: submit nativ dacă fetch e blocat
+    form.submit();
+  } catch {
+    form.submit();
+  } finally {
+    btn.disabled = false; btn.textContent = original;
+  }
+});
+</script>
+
       </form>
     </section>
   </main>
 </body>
 </html>
+
