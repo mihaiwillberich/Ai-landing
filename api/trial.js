@@ -1,85 +1,84 @@
-const escapeHtml = (s="") =>
-  s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+// api/trial.js
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(405).end();
-  let raw = ''; for await (const c of req) raw += c;
-  console.log('[trial] HIT', req.headers['content-type'], raw.slice(0,200));
-  return res.status(200).end('OK');
-};
-module.exports = async (req, res) => {
-  // Allow simple CORS and OPTIONS
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Accept");
-    return res.status(204).end();
-  }
-  if (req.method !== "POST") return res.status(405).end();
+  const log = (...a)=>console.log('[trial]', ...a);
+  log('HIT', req.method, req.url, req.headers['content-type'] || '');
+
+  if (req.method !== 'POST') return res.status(405).end('Only POST');
 
   try {
-    let raw = ""; for await (const c of req) raw += c;
+    // 1) Citește corpul RAW (merge și pentru JSON, și pentru form-urlencoded)
+    let raw = ''; for await (const c of req) raw += c;
+    log('RAW', raw.slice(0, 300));
 
-    // Support both JSON and x-www-form-urlencoded
-    const ct = (req.headers["content-type"] || "").toLowerCase();
-    let email, company;
-    if (ct.includes("application/json")) {
-      ({ email, company } = JSON.parse(raw || "{}"));
-    } else if (ct.includes("application/x-www-form-urlencoded")) {
-      const params = new URLSearchParams(raw);
-      email = params.get("email");
-      company = params.get("company");
+    // 2) Parsează în funcție de content-type
+    const ct = (req.headers['content-type'] || '').split(';')[0].trim();
+    let email = '', company = '';
+    try {
+      if (ct === 'application/json') {
+        const obj = JSON.parse(raw || '{}');
+        email   = (obj.email   || '').trim();
+        company = (obj.company || '').trim();
+      } else if (ct === 'application/x-www-form-urlencoded') {
+        const p = new URLSearchParams(raw);
+        email   = (p.get('email')   || '').trim();
+        company = (p.get('company') || '').trim();
+      } else {
+        // fallback
+        const obj = JSON.parse(raw || '{}');
+        email   = (obj.email   || '').trim();
+        company = (obj.company || '').trim();
+      }
+    } catch (e) {
+      log('PARSE_ERR', e?.message);
     }
 
-    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
-    const validCompany = typeof company === "string" && company.trim().length >= 2;
-    if (!validEmail || !validCompany) {
-      return res.status(400).json({ ok:false, error:"date_invalide" });
+    // 3) Validează
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !company) {
+      log('INVALID', { email, company });
+      return res.status(400).end('invalid');
     }
 
-    const base = (process.env.WELCOME_URL || "https://ai-landing.vercel.app").replace(/\/$/,"");
-    const link = `${base}/welcome?email=${encodeURIComponent(email)}`;
-    const from = process.env.FROM_EMAIL || "onboarding@resend.dev";
-    const html = `
+    // 4) Trimite prin Resend
+    const welcome = process.env.WELCOME_URL || 'https://ai-landing-self-xi.vercel.app/welcome.html';
+    const from    = process.env.FROM_EMAIL   || 'onboarding@resend.dev';
+    const html    = `
       <h2>Bun venit, ${escapeHtml(company)}</h2>
       <p>Acces demo 7 zile:</p>
-      <p><a href="${link}">Intră în aplicație</a></p>
+      <p><a href="${welcome}?email=${encodeURIComponent(email)}">Intră în aplicație</a></p>
     `;
 
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
+    log('RESEND about to send', { to: email, from });
+
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json"
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY || ''}`,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from, to: email, subject: "Acces demo – Free Trial 7 zile", html })
+      body: JSON.stringify({
+        from,
+        to: email,
+        subject: 'Acces demo – Free Trial 7 zile',
+        html
+      })
     });
 
-    if (!r.ok) {
-      const info = await r.text().catch(()=>"");
-      // If the browser did a native form submit, send a simple error page
-      const wantsHTML = (req.headers.accept || "").includes("text/html");
-      if (wantsHTML) {
-        res.statusCode = 502;
-        return res.end("Eroare la trimiterea emailului.");
-      }
-      return res.status(502).json({ ok:false, error:"resend_failed", info: info.slice(0,200) });
-    }
+    const text = await r.text().catch(()=> '');
+    log('RESEND response', r.status, text.slice(0, 300));
 
-    // If it was a native form submit, redirect to thanks.html
-    const wantsHTML = (req.headers.accept || "").includes("text/html");
-    if (wantsHTML) {
-      res.writeHead(303, { Location: "/thanks.html" });
-      return res.end();
+    if (!r.ok) return res.status(502).end('send_failed');
+
+    // 5) Răspunde prietenos: JSON pt fetch, redirect pt submit nativ
+    const accept = (req.headers['accept'] || '').toLowerCase();
+    if (accept.includes('application/json') || accept.includes('*/*')) {
+      return res.status(200).json({ ok: true });
+    } else {
+      res.statusCode = 303; res.setHeader('Location', '/thanks.html'); return res.end();
     }
-    return res.status(200).json({ ok:true, next: link });
-  } catch (e) {
-    // Native form: send simple error page
-    const wantsHTML = (req.headers.accept || "").includes("text/html");
-    if (wantsHTML) {
-      res.statusCode = 500;
-      return res.end("Eroare server.");
-    }
-    return res.status(500).json({ ok:false, error:"server" });
+  } catch (err) {
+    console.error('[trial] ERROR', err?.stack || err);
+    return res.status(500).end('server_error');
   }
 };
-
-
