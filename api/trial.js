@@ -1,6 +1,11 @@
 const escapeHtml = (s="") =>
   s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).end();
+  let raw = ''; for await (const c of req) raw += c;
+  console.log('[trial] HIT', req.headers['content-type'], raw.slice(0,200));
+  return res.status(200).end('OK');
+};
 module.exports = async (req, res) => {
   // Allow simple CORS and OPTIONS
   if (req.method === "OPTIONS") {
